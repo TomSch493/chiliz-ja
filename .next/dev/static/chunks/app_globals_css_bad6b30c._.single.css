@@ -535,6 +535,10 @@
     container: card-header / inline-size;
   }
 
+  .visible {
+    visibility: visible;
+  }
+
   .absolute {
     position: absolute;
   }
@@ -1539,6 +1543,10 @@
     background-clip: text;
   }
 
+  .p-2 {
+    padding: calc(var(--spacing) * 2);
+  }
+
   .p-3 {
     padding: calc(var(--spacing) * 3);
   }
@@ -2340,6 +2348,16 @@
   @supports (color: color-mix(in lab, red, red)) {
     .dark\:bg-blue-900\/20:is(.dark *) {
       background-color: color-mix(in oklab, var(--color-blue-900) 20%, transparent);
+    }
+  }
+
+  .dark\:bg-blue-900\/30:is(.dark *) {
+    background-color: #1c398e4d;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .dark\:bg-blue-900\/30:is(.dark *) {
+      background-color: color-mix(in oklab, var(--color-blue-900) 30%, transparent);
     }
   }
 

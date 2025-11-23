@@ -5,7 +5,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { ethers, BrowserProvider, Contract } from 'ethers'
 
 interface PaymentState {
@@ -74,7 +74,7 @@ export function useChzPayment(authenticatedAddress?: string | null) {
   /**
    * Fetch user's CHZ token balance
    */
-  const fetchBalance = async () => {
+  const fetchBalance = useCallback(async () => {
     if (!window.ethereum || !authenticatedAddress) {
       return
     }
@@ -84,7 +84,13 @@ export function useChzPayment(authenticatedAddress?: string | null) {
     try {
       const provider = new BrowserProvider(window.ethereum)
       const chzToken = new Contract(CHZ_TOKEN_ADDRESS, ERC20_ABI, provider)
+      
+      console.log('🔍 Checking balance for token:', CHZ_TOKEN_ADDRESS)
+      console.log('🔍 Wallet address:', authenticatedAddress)
+      
       const balance = await chzToken.balanceOf(authenticatedAddress)
+      
+      console.log('📊 Raw balance:', balance.toString())
       
       // Format balance to human-readable format (2 decimal places)
       const balanceInChz = Number(balance) / 1e18
@@ -96,16 +102,20 @@ export function useChzPayment(authenticatedAddress?: string | null) {
         isLoadingBalance: false,
       }))
 
-      console.log('💰 Fetched balance:', formattedBalance, 'CHZ')
+      console.log('💰 Fetched token balance:', formattedBalance, 'CHZ')
+      
+      // Also check native CHZ balance for comparison
+      const nativeBalance = await provider.getBalance(authenticatedAddress)
+      console.log('💵 Native CHZ balance:', ethers.formatEther(nativeBalance), 'CHZ (gas)')
     } catch (error: any) {
-      console.error('Failed to fetch balance:', error)
+      console.error('❌ Failed to fetch balance:', error)
       setState(prev => ({
         ...prev,
         balance: null,
         isLoadingBalance: false,
       }))
     }
-  }
+  }, [authenticatedAddress]) // Only recreate if authenticatedAddress changes
 
   /**
    * Check current allowance

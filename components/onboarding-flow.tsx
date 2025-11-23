@@ -251,21 +251,27 @@ export function OnboardingFlow() {
                   {/* Warning if insufficient balance */}
                   {balance !== null && parseFloat(balance) < 1 && (
                     <div className="mt-3 pt-3 border-t border-purple-200 dark:border-purple-800">
-                      <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                      <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1 mb-2">
                         <AlertCircle className="w-3 h-3" />
-                        Insufficient balance. You need at least 1 CHZ to proceed.
+                        Insufficient token balance. You need at least 1 CHZ token to proceed.
                       </p>
-                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                        💡 Get test tokens from the{" "}
-                        <a 
-                          href="https://spicy-faucet.chiliz.com" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="underline hover:text-blue-700"
-                        >
-                          Chiliz Faucet
-                        </a>
-                      </p>
+                      <div className="text-xs bg-blue-50 dark:bg-blue-900/30 p-2 rounded border border-blue-200 dark:border-blue-800">
+                        <p className="text-blue-700 dark:text-blue-300 font-medium mb-1">
+                          ⚠️ Important: Native CHZ ≠ Token CHZ
+                        </p>
+                        <p className="text-blue-600 dark:text-blue-400">
+                          • You need <strong>CHZ tokens</strong> (ERC20) to pay, not native CHZ (gas)
+                        </p>
+                        <p className="text-blue-600 dark:text-blue-400">
+                          • Native CHZ = for gas fees only (you probably have 20 CHZ ✅)
+                        </p>
+                        <p className="text-blue-600 dark:text-blue-400 mt-2">
+                          💡 Solution: Deploy MockCHZ and mint tokens
+                        </p>
+                        <p className="text-blue-500 dark:text-blue-300 mt-1">
+                          → See <strong>SOLUTION_FINALE_FR.md</strong> for instructions
+                        </p>
+                      </div>
                     </div>
                   )}
                   
