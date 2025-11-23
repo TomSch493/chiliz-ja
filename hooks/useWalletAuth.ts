@@ -153,5 +153,8 @@ export function useWalletAuth() {
     connectWallet,
     disconnectWallet,
     checkAuthStatus,
+    // Aliases for convenience
+    connect: connectWallet,
+    disconnect: disconnectWallet,
   }
 }

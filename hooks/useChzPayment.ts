@@ -10,7 +10,9 @@ import { ethers, BrowserProvider, Contract } from 'ethers'
 
 interface PaymentState {
   isProcessing: boolean
-  step: 'idle' | 'approving' | 'paying' | 'confirming' | 'success' | 'error'
+  isApproving: boolean
+  isPaying: boolean
+  paymentStatus: 'idle' | 'approving' | 'paying' | 'confirming' | 'confirmed' | 'error'
   txHash: string | null
   error: string | null
 }
@@ -18,84 +20,137 @@ interface PaymentState {
 const ERC20_ABI = [
   'function approve(address spender, uint256 amount) returns (bool)',
   'function allowance(address owner, address spender) view returns (uint256)',
+  'function balanceOf(address account) view returns (uint256)',
 ]
 
 const PAYMENT_CONTRACT_ABI = [
   'function pay() external',
 ]
 
+// Environment variables
+const CHZ_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_CHZ_TOKEN_ADDRESS || '0x721ef6871f1c4efe730dce047d40d1743b886946'
+const PAYMENT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PAYMENT_CONTRACT_ADDRESS || '0x02278441aa8acf07E9c1aEa074d3A36E1Dd4F4FD'
+const FIXED_CHZ_AMOUNT = process.env.NEXT_PUBLIC_FIXED_CHZ_AMOUNT || '1000000000000000000' // 1 CHZ
+
 export function useChzPayment() {
   const [state, setState] = useState<PaymentState>({
     isProcessing: false,
-    step: 'idle',
+    isApproving: false,
+    isPaying: false,
+    paymentStatus: 'idle',
     txHash: null,
     error: null,
   })
 
   /**
-   * Execute the full payment flow
+   * Check current allowance
    */
-  const executePayment = async () => {
+  const checkAllowance = async (): Promise<bigint> => {
     if (!window.ethereum) {
-      setState(prev => ({
-        ...prev,
-        error: 'MetaMask is not installed',
-        step: 'error',
-      }))
-      return { success: false }
+      throw new Error('MetaMask is not installed')
     }
 
-    setState({
-      isProcessing: true,
-      step: 'idle',
-      txHash: null,
-      error: null,
-    })
-
     try {
-      // Step 1: Get payment configuration from backend
-      setState(prev => ({ ...prev, step: 'idle' }))
-      const configResponse = await fetch('/api/payment/initiate', {
-        method: 'POST',
-      })
-
-      if (!configResponse.ok) {
-        throw new Error('Failed to get payment configuration')
-      }
-
-      const config = await configResponse.json()
-      const { chzTokenAddress, paymentContractAddress, fixedChzAmount } = config
-
-      // Step 2: Connect to MetaMask
       const provider = new BrowserProvider(window.ethereum)
       const signer = await provider.getSigner()
       const userAddress = await signer.getAddress()
 
-      // Step 3: Check and approve CHZ tokens
-      setState(prev => ({ ...prev, step: 'approving' }))
-      const chzToken = new Contract(chzTokenAddress, ERC20_ABI, signer)
-
-      // Check current allowance
-      const currentAllowance = await chzToken.allowance(userAddress, paymentContractAddress)
+      const chzToken = new Contract(CHZ_TOKEN_ADDRESS, ERC20_ABI, provider)
+      const allowance = await chzToken.allowance(userAddress, PAYMENT_CONTRACT_ADDRESS)
       
-      // If allowance is insufficient, request approval
-      if (BigInt(currentAllowance.toString()) < BigInt(fixedChzAmount)) {
-        const approveTx = await chzToken.approve(paymentContractAddress, fixedChzAmount)
-        await approveTx.wait()
-      }
+      return BigInt(allowance.toString())
+    } catch (error: any) {
+      console.error('Check allowance error:', error)
+      throw error
+    }
+  }
 
-      // Step 4: Call pay() function on payment contract
-      setState(prev => ({ ...prev, step: 'paying' }))
-      const paymentContract = new Contract(paymentContractAddress, PAYMENT_CONTRACT_ABI, signer)
+  /**
+   * Approve CHZ tokens
+   */
+  const approve = async () => {
+    if (!window.ethereum) {
+      throw new Error('MetaMask is not installed')
+    }
+
+    setState(prev => ({
+      ...prev,
+      isApproving: true,
+      isProcessing: true,
+      paymentStatus: 'approving',
+      error: null,
+    }))
+
+    try {
+      const provider = new BrowserProvider(window.ethereum)
+      const signer = await provider.getSigner()
+      const chzToken = new Contract(CHZ_TOKEN_ADDRESS, ERC20_ABI, signer)
+
+      const approveTx = await chzToken.approve(PAYMENT_CONTRACT_ADDRESS, FIXED_CHZ_AMOUNT)
+      await approveTx.wait()
+
+      setState(prev => ({
+        ...prev,
+        isApproving: false,
+        isProcessing: false,
+      }))
+
+      return { success: true }
+    } catch (error: any) {
+      console.error('Approval error:', error)
+      const errorMessage = error.message || 'Token approval failed'
+      
+      setState(prev => ({
+        ...prev,
+        isApproving: false,
+        isProcessing: false,
+        paymentStatus: 'error',
+        error: errorMessage,
+      }))
+
+      throw new Error(errorMessage)
+    }
+  }
+
+  /**
+   * Execute payment
+   */
+  const pay = async () => {
+    if (!window.ethereum) {
+      throw new Error('MetaMask is not installed')
+    }
+
+    setState(prev => ({
+      ...prev,
+      isPaying: true,
+      isProcessing: true,
+      paymentStatus: 'paying',
+      error: null,
+    }))
+
+    try {
+      const provider = new BrowserProvider(window.ethereum)
+      const signer = await provider.getSigner()
+      const paymentContract = new Contract(PAYMENT_CONTRACT_ADDRESS, PAYMENT_CONTRACT_ABI, signer)
+
+      // Execute payment
       const payTx = await paymentContract.pay()
       
+      setState(prev => ({
+        ...prev,
+        paymentStatus: 'confirming',
+      }))
+
       // Wait for transaction to be mined
       const receipt = await payTx.wait()
       const txHash = receipt.hash
 
-      setState(prev => ({ ...prev, step: 'confirming', txHash }))
+      setState(prev => ({
+        ...prev,
+        txHash,
+      }))
 
-      // Step 5: Confirm payment on backend
+      // Confirm payment on backend
       const confirmResponse = await fetch('/api/payment/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -109,7 +164,9 @@ export function useChzPayment() {
       // Success!
       setState({
         isProcessing: false,
-        step: 'success',
+        isApproving: false,
+        isPaying: false,
+        paymentStatus: 'confirmed',
         txHash,
         error: null,
       })
@@ -119,14 +176,15 @@ export function useChzPayment() {
       console.error('Payment error:', error)
       const errorMessage = error.message || 'Payment failed'
       
-      setState({
+      setState(prev => ({
+        ...prev,
+        isPaying: false,
         isProcessing: false,
-        step: 'error',
-        txHash: null,
+        paymentStatus: 'error',
         error: errorMessage,
-      })
+      }))
 
-      return { success: false, error: errorMessage }
+      throw new Error(errorMessage)
     }
   }
 
@@ -136,7 +194,9 @@ export function useChzPayment() {
   const resetPayment = () => {
     setState({
       isProcessing: false,
-      step: 'idle',
+      isApproving: false,
+      isPaying: false,
+      paymentStatus: 'idle',
       txHash: null,
       error: null,
     })
@@ -144,7 +204,9 @@ export function useChzPayment() {
 
   return {
     ...state,
-    executePayment,
+    approve,
+    pay,
+    checkAllowance,
     resetPayment,
   }
 }
