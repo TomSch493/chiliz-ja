@@ -3,5 +3,8 @@
   "/api/auth/me/route": "app/api/auth/me/route.js",
   "/api/auth/nonce/route": "app/api/auth/nonce/route.js",
   "/api/auth/verify/route": "app/api/auth/verify/route.js",
+  "/api/payment/check/route": "app/api/payment/check/route.js",
+  "/api/payment/confirm/route": "app/api/payment/confirm/route.js",
+  "/app/page": "app/app/page.js",
   "/page": "app/page.js"
 }

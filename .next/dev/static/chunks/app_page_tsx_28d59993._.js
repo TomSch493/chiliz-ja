@@ -8,7 +8,7 @@
   "static/chunks/a7082_ethers_lib_esm_d9e40fef._.js",
   "static/chunks/86fe9_@noble_curves_esm_13b9c42a._.js",
   "static/chunks/node_modules__pnpm_558ff89b._.js",
-  "static/chunks/_6c14284f._.js"
+  "static/chunks/_51732da5._.js"
 ],
     source: "dynamic"
 });

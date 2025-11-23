@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { useWalletAuth } from "@/hooks/useWalletAuth";
-import { useChzPayment } from "@/hooks/useChzPayment";
+import { useNativeChzPayment } from "@/hooks/useNativeChzPayment";
 import { Loader2, Wallet, DollarSign, CheckCircle2, AlertCircle } from "lucide-react";
 
 type Step = 1 | 2 | 3;
@@ -24,16 +24,13 @@ export function OnboardingFlow() {
   } = useWalletAuth();
 
   const {
-    approve,
     pay,
-    checkAllowance,
-    isApproving,
     isPaying,
     paymentStatus,
     balance,
     isLoadingBalance,
     fetchBalance,
-  } = useChzPayment(address); // Pass authenticated address to payment hook
+  } = useNativeChzPayment(address); // Pass authenticated address to native payment hook
 
   // Étape 1 → Étape 2 automatiquement après connexion
   useEffect(() => {
@@ -72,26 +69,13 @@ export function OnboardingFlow() {
     }
   };
 
-  const handleApproveAndPay = async () => {
+  const handlePay = async () => {
     try {
       setError(null);
       setIsProcessing(true);
 
-      // Vérifier l'allowance actuelle
-      const currentAllowance = await checkAllowance();
-      const requiredAmount = BigInt("1000000000000000000"); // 1 CHZ
-
-      // Si pas assez d'allowance, approuver d'abord
-      if (currentAllowance < requiredAmount) {
-        console.log("Approving CHZ tokens...");
-        await approve();
-        
-        // Attendre un peu pour que l'approbation soit confirmée
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-
-      // Effectuer le paiement
-      console.log("Processing payment...");
+      // No approval needed for native CHZ! Just send the payment
+      console.log("Processing native CHZ payment...");
       await pay();
 
     } catch (err: any) {
@@ -207,9 +191,10 @@ export function OnboardingFlow() {
                 💡 How it works:
               </p>
               <ul className="text-xs text-blue-600 dark:text-blue-400 text-left space-y-1">
+                <li>• Pay with native CHZ (no tokens needed!)</li>
                 <li>• 80% goes to wallet 1 (0x133e...042e)</li>
                 <li>• 20% goes to wallet 2 (0x133e...042f)</li>
-                <li>• Payment is processed via smart contract</li>
+                <li>• Payment is instant via smart contract</li>
               </ul>
             </div>
 
@@ -253,23 +238,25 @@ export function OnboardingFlow() {
                     <div className="mt-3 pt-3 border-t border-purple-200 dark:border-purple-800">
                       <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1 mb-2">
                         <AlertCircle className="w-3 h-3" />
-                        Insufficient token balance. You need at least 1 CHZ token to proceed.
+                        Insufficient balance. You need at least 1 CHZ to proceed.
                       </p>
                       <div className="text-xs bg-blue-50 dark:bg-blue-900/30 p-2 rounded border border-blue-200 dark:border-blue-800">
                         <p className="text-blue-700 dark:text-blue-300 font-medium mb-1">
-                          ⚠️ Important: Native CHZ ≠ Token CHZ
+                          💰 You need native CHZ
                         </p>
                         <p className="text-blue-600 dark:text-blue-400">
-                          • You need <strong>CHZ tokens</strong> (ERC20) to pay, not native CHZ (gas)
+                          • Get testnet CHZ from the faucet
                         </p>
-                        <p className="text-blue-600 dark:text-blue-400">
-                          • Native CHZ = for gas fees only (you probably have 20 CHZ ✅)
-                        </p>
-                        <p className="text-blue-600 dark:text-blue-400 mt-2">
-                          💡 Solution: Deploy MockCHZ and mint tokens
-                        </p>
-                        <p className="text-blue-500 dark:text-blue-300 mt-1">
-                          → See <strong>SOLUTION_FINALE_FR.md</strong> for instructions
+                        <p className="text-blue-600 dark:text-blue-400 mt-1">
+                          💡{" "}
+                          <a 
+                            href="https://spicy-faucet.chiliz.com" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="underline hover:text-blue-700 font-medium"
+                          >
+                            Get free testnet CHZ here
+                          </a>
                         </p>
                       </div>
                     </div>
@@ -289,19 +276,19 @@ export function OnboardingFlow() {
             )}
 
             <button
-              onClick={handleApproveAndPay}
-              disabled={isApproving || isPaying || isProcessing || paymentStatus === "confirming"}
+              onClick={handlePay}
+              disabled={isPaying || isProcessing || paymentStatus === "confirming"}
               className="w-full py-4 px-6 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              {isApproving || isPaying || isProcessing || paymentStatus === "confirming" ? (
+              {isPaying || isProcessing || paymentStatus === "confirming" ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  {isApproving ? "Approving..." : "Processing Payment..."}
+                  Processing Payment...
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
                   <DollarSign className="w-5 h-5" />
-                  Pay 1 CHZ
+                  Pay 1 CHZ (Native)
                 </span>
               )}
             </button>

@@ -1,0 +1,227 @@
+/**
+ * Custom React Hook for Native CHZ Payment Flow
+ * Handles native CHZ payments (no token approval needed!)
+ */
+
+'use client'
+
+import { useState, useCallback } from 'react'
+import { ethers, BrowserProvider, Contract } from 'ethers'
+
+interface PaymentState {
+  isProcessing: boolean
+  isPaying: boolean
+  paymentStatus: 'idle' | 'paying' | 'confirming' | 'confirmed' | 'error'
+  txHash: string | null
+  error: string | null
+  balance: string | null
+  isLoadingBalance: boolean
+}
+
+const PAYMENT_CONTRACT_ABI = [
+  'function pay() external payable',
+  'function getRequiredAmount() external view returns (uint256)',
+]
+
+// Environment variables
+const PAYMENT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PAYMENT_CONTRACT_ADDRESS || '0x02278441aa8acf07E9c1aEa074d3A36E1Dd4F4FD'
+const FIXED_CHZ_AMOUNT = process.env.NEXT_PUBLIC_FIXED_CHZ_AMOUNT || '1000000000000000000' // 1 CHZ
+
+export function useNativeChzPayment(authenticatedAddress?: string | null) {
+  const [state, setState] = useState<PaymentState>({
+    isProcessing: false,
+    isPaying: false,
+    paymentStatus: 'idle',
+    txHash: null,
+    error: null,
+    balance: null,
+    isLoadingBalance: false,
+  })
+
+  /**
+   * Verify that the current MetaMask account matches the authenticated address
+   */
+  const verifyWalletMatch = async (): Promise<string> => {
+    if (!window.ethereum) {
+      throw new Error('MetaMask is not installed')
+    }
+
+    const provider = new BrowserProvider(window.ethereum)
+    const signer = await provider.getSigner()
+    const currentAddress = await signer.getAddress()
+
+    console.log('🔐 Authenticated address:', authenticatedAddress)
+    console.log('💳 Current MetaMask address:', currentAddress)
+
+    // Verify addresses match (case-insensitive)
+    if (authenticatedAddress && currentAddress.toLowerCase() !== authenticatedAddress.toLowerCase()) {
+      throw new Error(
+        `Wallet mismatch! You authenticated with ${authenticatedAddress} but MetaMask is currently using ${currentAddress}. Please switch to the correct account in MetaMask.`
+      )
+    }
+
+    return currentAddress
+  }
+
+  /**
+   * Fetch user's native CHZ balance
+   */
+  const fetchBalance = useCallback(async () => {
+    if (!window.ethereum || !authenticatedAddress) {
+      return
+    }
+
+    setState(prev => ({ ...prev, isLoadingBalance: true }))
+
+    try {
+      const provider = new BrowserProvider(window.ethereum)
+      
+      console.log('🔍 Checking native CHZ balance...')
+      console.log('🔍 Wallet address:', authenticatedAddress)
+      
+      const balance = await provider.getBalance(authenticatedAddress)
+      
+      console.log('📊 Raw balance:', balance.toString())
+      
+      // Format balance to human-readable format (2 decimal places)
+      const balanceInChz = Number(balance) / 1e18
+      const formattedBalance = balanceInChz.toFixed(2)
+      
+      setState(prev => ({
+        ...prev,
+        balance: formattedBalance,
+        isLoadingBalance: false,
+      }))
+
+      console.log('💰 Native CHZ balance:', formattedBalance, 'CHZ')
+    } catch (error: any) {
+      console.error('❌ Failed to fetch balance:', error)
+      setState(prev => ({
+        ...prev,
+        balance: null,
+        isLoadingBalance: false,
+      }))
+    }
+  }, [authenticatedAddress])
+
+  /**
+   * Execute payment with native CHZ (no approval needed!)
+   */
+  const pay = async () => {
+    if (!window.ethereum) {
+      throw new Error('MetaMask is not installed')
+    }
+
+    setState(prev => ({
+      ...prev,
+      isPaying: true,
+      isProcessing: true,
+      paymentStatus: 'paying',
+      error: null,
+    }))
+
+    try {
+      // Verify wallet match first
+      const userAddress = await verifyWalletMatch()
+      
+      console.log('💳 Executing payment for address:', userAddress)
+      
+      const provider = new BrowserProvider(window.ethereum)
+      const signer = await provider.getSigner()
+      
+      // Check balance before paying
+      const balance = await provider.getBalance(userAddress)
+      console.log('💰 Native CHZ balance:', ethers.formatEther(balance), 'CHZ')
+      
+      const requiredAmount = BigInt(FIXED_CHZ_AMOUNT)
+      
+      if (balance < requiredAmount) {
+        throw new Error(
+          `Insufficient CHZ balance. You have ${ethers.formatEther(balance)} CHZ but need ${ethers.formatEther(requiredAmount)} CHZ`
+        )
+      }
+      
+      const paymentContract = new Contract(PAYMENT_CONTRACT_ADDRESS, PAYMENT_CONTRACT_ABI, signer)
+
+      // Execute payment - send native CHZ with the transaction
+      console.log('⏳ Sending native CHZ payment...')
+      console.log('💵 Amount:', ethers.formatEther(FIXED_CHZ_AMOUNT), 'CHZ')
+      
+      const payTx = await paymentContract.pay({ value: FIXED_CHZ_AMOUNT })
+      console.log('📝 Payment transaction sent:', payTx.hash)
+      
+      setState(prev => ({
+        ...prev,
+        paymentStatus: 'confirming',
+      }))
+
+      // Wait for transaction to be mined
+      const receipt = await payTx.wait()
+      const txHash = receipt.hash
+      console.log('✅ Payment confirmed! TX:', txHash)
+
+      setState(prev => ({
+        ...prev,
+        txHash,
+      }))
+
+      // Confirm payment on backend
+      const confirmResponse = await fetch('/api/payment/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ txHash }),
+      })
+
+      if (!confirmResponse.ok) {
+        throw new Error('Payment confirmation failed')
+      }
+
+      // Success!
+      setState(prev => ({
+        ...prev,
+        isProcessing: false,
+        isPaying: false,
+        paymentStatus: 'confirmed',
+        txHash,
+        error: null,
+      }))
+
+      return { success: true, txHash }
+    } catch (error: any) {
+      console.error('❌ Payment error:', error)
+      const errorMessage = error.message || 'Payment failed'
+      
+      setState(prev => ({
+        ...prev,
+        isPaying: false,
+        isProcessing: false,
+        paymentStatus: 'error',
+        error: errorMessage,
+      }))
+
+      throw new Error(errorMessage)
+    }
+  }
+
+  /**
+   * Reset payment state
+   */
+  const resetPayment = () => {
+    setState({
+      isProcessing: false,
+      isPaying: false,
+      paymentStatus: 'idle',
+      txHash: null,
+      error: null,
+      balance: null,
+      isLoadingBalance: false,
+    })
+  }
+
+  return {
+    ...state,
+    pay,
+    resetPayment,
+    fetchBalance,
+  }
+}
