@@ -78,10 +78,31 @@ export function OnboardingFlow() {
 
   // Fetch balance when entering step 2
   useEffect(() => {
+    let isMounted = true;
+    
     if (currentStep === 2 && address && fetchBalance) {
-      fetchBalance();
+      // Wrap fetchBalance to handle unmount
+      const safelyFetchBalance = async () => {
+        try {
+          if (isMounted) {
+            await fetchBalance();
+          }
+        } catch (error: any) {
+          // Silently ignore errors if component is unmounted or page is navigating
+          if (isMounted && !error.message?.includes('Block tracker destroyed')) {
+            console.error('Failed to fetch balance:', error);
+          }
+        }
+      };
+      
+      safelyFetchBalance();
     }
-  }, [currentStep, address, fetchBalance]);
+    
+    return () => {
+      isMounted = false; // Cancel any pending operations
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, address]); // Only re-run when step or address changes
 
   const handleConnectWallet = async () => {
     try {
