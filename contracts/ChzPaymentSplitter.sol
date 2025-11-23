@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 /**
  * @title ChzPaymentSplitter
  * @dev Accepts fixed CHZ token payments and splits them between two wallets (80/20)
+ * @custom:dev-run-script scripts/deploy.ts
  */
 
 // Minimal ERC20 interface
