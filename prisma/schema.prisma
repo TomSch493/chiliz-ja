@@ -1,0 +1,64 @@
+// Prisma schema for Web3 Pay-to-Play App
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - stores wallet addresses
+model User {
+  id        String   @id @default(cuid())
+  address   String   @unique // Ethereum wallet address (lowercase)
+  nonce     String?  // Temporary nonce for authentication
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions Session[]
+  payments Payment[]
+
+  @@map("users")
+}
+
+// Session model - JWT-based sessions
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique // JWT token or session ID
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("sessions")
+}
+
+// Payment model - tracks on-chain payments
+model Payment {
+  id        String        @id @default(cuid())
+  userId    String
+  txHash    String        @unique // Transaction hash on blockchain
+  amount    String        // Amount in CHZ (stored as string to handle BigInt)
+  status    PaymentStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([txHash])
+  @@map("payments")
+}
+
+// Payment status enum
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
