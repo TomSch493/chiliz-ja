@@ -477,10 +477,14 @@ const RequestSchema = __TURBOPACK__imported__module__$5b$project$5d2f$node_modul
 });
 async function POST(request) {
     try {
+        console.log('🔵 Payment confirmation request received');
         // Require authentication
         const user = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$auth$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["requireAuth"])();
+        console.log('✅ User authenticated:', user.address);
         const body = await request.json();
+        console.log('📦 Request body:', body);
         const { txHash } = RequestSchema.parse(body);
+        console.log('✅ txHash validated:', txHash);
         // Check if payment already exists
         const existingPayment = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findUnique({
             where: {
@@ -547,6 +551,16 @@ async function POST(request) {
                 status: 'CONFIRMED'
             }
         });
+        // ✅ IMPORTANT: Set user as logged in after successful payment
+        await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].user.update({
+            where: {
+                id: user.id
+            },
+            data: {
+                isLoggedIn: true
+            }
+        });
+        console.log(`✅ User ${user.address} is now logged in after payment`);
         return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
             success: true,
             status: 'CONFIRMED',
@@ -558,7 +572,9 @@ async function POST(request) {
             }
         });
     } catch (error) {
+        console.error('❌ Payment confirmation error:', error);
         if (error instanceof Error && error.message.includes('Unauthorized')) {
+            console.error('❌ Auth error:', error.message);
             return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                 error: 'Unauthorized - Please connect your wallet'
             }, {
@@ -566,6 +582,7 @@ async function POST(request) {
             });
         }
         if (error instanceof __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$zod$40$3$2e$25$2e$76$2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].ZodError) {
+            console.error('❌ Validation error:', error.errors);
             return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                 error: 'Invalid request data',
                 details: error.errors
@@ -573,9 +590,9 @@ async function POST(request) {
                 status: 400
             });
         }
-        console.error('Error confirming payment:', error);
+        console.error('❌ Unexpected error confirming payment:', error);
         return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-            error: 'Internal server error'
+            error: error instanceof Error ? error.message : 'Internal server error'
         }, {
             status: 500
         });

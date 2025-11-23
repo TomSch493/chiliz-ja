@@ -190,35 +190,50 @@ function AppPage() {
     const router = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRouter"])();
     const [isChecking, setIsChecking] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(true);
     const [hasAccess, setHasAccess] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [retryCount, setRetryCount] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(0);
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         checkAccess();
     }, []);
-    const checkAccess = async ()=>{
+    const checkAccess = async (attempt = 0)=>{
         try {
+            console.log(`🔍 Checking access (attempt ${attempt + 1})...`);
             // Check if user is authenticated
             const authResponse = await fetch("/api/auth/me");
             if (!authResponse.ok) {
-                router.push("/");
+                console.log("❌ Not authenticated, redirecting to onboarding");
+                // Small delay to avoid redirect loops
+                setTimeout(()=>router.replace("/"), 500);
                 return;
             }
             const authData = await authResponse.json();
+            console.log("✅ User authenticated:", authData);
             // Check if user has paid
             const paymentsResponse = await fetch("/api/payment/check");
             if (!paymentsResponse.ok) {
-                router.push("/");
+                console.log("❌ Payment check failed, redirecting to onboarding");
+                setTimeout(()=>router.replace("/"), 500);
                 return;
             }
             const paymentsData = await paymentsResponse.json();
+            console.log("💰 Payment status:", paymentsData);
             if (paymentsData.hasPaid) {
+                console.log("✅ User has paid, granting access");
                 setHasAccess(true);
+                setIsChecking(false);
             } else {
-                router.push("/");
+                // If this is a fresh redirect from payment, wait and retry once
+                if (attempt === 0) {
+                    console.log("⏳ Payment not confirmed yet, retrying in 2 seconds...");
+                    setRetryCount(1);
+                    setTimeout(()=>checkAccess(1), 2000);
+                } else {
+                    console.log("❌ Payment not confirmed after retry, redirecting to onboarding");
+                    setTimeout(()=>router.replace("/"), 500);
+                }
             }
         } catch (error) {
-            console.error("Access check error:", error);
-            router.push("/");
-        } finally{
-            setIsChecking(false);
+            console.error("❌ Access check error:", error);
+            setTimeout(()=>router.replace("/"), 500);
         }
     };
     if (isChecking) {
@@ -231,7 +246,7 @@ function AppPage() {
                         className: "w-12 h-12 animate-spin text-purple-600 mx-auto mb-4"
                     }, void 0, false, {
                         fileName: "[project]/app/app/page.tsx",
-                        lineNumber: 55,
+                        lineNumber: 71,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -239,18 +254,30 @@ function AppPage() {
                         children: "Verifying access..."
                     }, void 0, false, {
                         fileName: "[project]/app/app/page.tsx",
-                        lineNumber: 56,
+                        lineNumber: 72,
                         columnNumber: 11
+                    }, this),
+                    retryCount > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        className: "text-sm text-gray-500 dark:text-gray-400 mt-2",
+                        children: [
+                            "Confirming payment... (attempt ",
+                            retryCount + 1,
+                            "/2)"
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/app/app/page.tsx",
+                        lineNumber: 74,
+                        columnNumber: 13
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/app/page.tsx",
-                lineNumber: 54,
+                lineNumber: 70,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/app/app/page.tsx",
-            lineNumber: 53,
+            lineNumber: 69,
             columnNumber: 7
         }, this);
     }
@@ -276,12 +303,12 @@ function AppPage() {
                                             className: "w-6 h-6 text-white"
                                         }, void 0, false, {
                                             fileName: "[project]/app/app/page.tsx",
-                                            lineNumber: 74,
+                                            lineNumber: 95,
                                             columnNumber: 17
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/app/app/page.tsx",
-                                        lineNumber: 73,
+                                        lineNumber: 94,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -291,7 +318,7 @@ function AppPage() {
                                                 children: "Chiliz App"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/app/page.tsx",
-                                                lineNumber: 77,
+                                                lineNumber: 98,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -299,19 +326,19 @@ function AppPage() {
                                                 children: "Welcome to the exclusive area"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/app/page.tsx",
-                                                lineNumber: 80,
+                                                lineNumber: 101,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/app/page.tsx",
-                                        lineNumber: 76,
+                                        lineNumber: 97,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/app/page.tsx",
-                                lineNumber: 72,
+                                lineNumber: 93,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ui$2f$badge$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Badge"], {
@@ -319,23 +346,23 @@ function AppPage() {
                                 children: "✓ Premium Access"
                             }, void 0, false, {
                                 fileName: "[project]/app/app/page.tsx",
-                                lineNumber: 83,
+                                lineNumber: 104,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/app/page.tsx",
-                        lineNumber: 71,
+                        lineNumber: 92,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/app/app/page.tsx",
-                    lineNumber: 70,
+                    lineNumber: 91,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/app/page.tsx",
-                lineNumber: 69,
+                lineNumber: 90,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
@@ -349,7 +376,7 @@ function AppPage() {
                                 children: "🎉 Welcome to Your Dashboard!"
                             }, void 0, false, {
                                 fileName: "[project]/app/app/page.tsx",
-                                lineNumber: 94,
+                                lineNumber: 115,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -357,13 +384,13 @@ function AppPage() {
                                 children: "You now have full access to all features. Let's get started!"
                             }, void 0, false, {
                                 fileName: "[project]/app/app/page.tsx",
-                                lineNumber: 97,
+                                lineNumber: 118,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/app/page.tsx",
-                        lineNumber: 93,
+                        lineNumber: 114,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -374,7 +401,7 @@ function AppPage() {
                                     className: "w-8 h-8"
                                 }, void 0, false, {
                                     fileName: "[project]/app/app/page.tsx",
-                                    lineNumber: 105,
+                                    lineNumber: 126,
                                     columnNumber: 19
                                 }, void 0),
                                 title: "Challenges",
@@ -382,7 +409,7 @@ function AppPage() {
                                 color: "from-yellow-500 to-orange-500"
                             }, void 0, false, {
                                 fileName: "[project]/app/app/page.tsx",
-                                lineNumber: 104,
+                                lineNumber: 125,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(FeatureCard, {
@@ -390,7 +417,7 @@ function AppPage() {
                                     className: "w-8 h-8"
                                 }, void 0, false, {
                                     fileName: "[project]/app/app/page.tsx",
-                                    lineNumber: 111,
+                                    lineNumber: 132,
                                     columnNumber: 19
                                 }, void 0),
                                 title: "Shop",
@@ -398,7 +425,7 @@ function AppPage() {
                                 color: "from-purple-500 to-pink-500"
                             }, void 0, false, {
                                 fileName: "[project]/app/app/page.tsx",
-                                lineNumber: 110,
+                                lineNumber: 131,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(FeatureCard, {
@@ -406,7 +433,7 @@ function AppPage() {
                                     className: "w-8 h-8"
                                 }, void 0, false, {
                                     fileName: "[project]/app/app/page.tsx",
-                                    lineNumber: 117,
+                                    lineNumber: 138,
                                     columnNumber: 19
                                 }, void 0),
                                 title: "Leaderboard",
@@ -414,7 +441,7 @@ function AppPage() {
                                 color: "from-blue-500 to-cyan-500"
                             }, void 0, false, {
                                 fileName: "[project]/app/app/page.tsx",
-                                lineNumber: 116,
+                                lineNumber: 137,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(FeatureCard, {
@@ -422,7 +449,7 @@ function AppPage() {
                                     className: "w-8 h-8"
                                 }, void 0, false, {
                                     fileName: "[project]/app/app/page.tsx",
-                                    lineNumber: 123,
+                                    lineNumber: 144,
                                     columnNumber: 19
                                 }, void 0),
                                 title: "Community",
@@ -430,7 +457,7 @@ function AppPage() {
                                 color: "from-green-500 to-emerald-500"
                             }, void 0, false, {
                                 fileName: "[project]/app/app/page.tsx",
-                                lineNumber: 122,
+                                lineNumber: 143,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(FeatureCard, {
@@ -438,7 +465,7 @@ function AppPage() {
                                     className: "w-8 h-8"
                                 }, void 0, false, {
                                     fileName: "[project]/app/app/page.tsx",
-                                    lineNumber: 129,
+                                    lineNumber: 150,
                                     columnNumber: 19
                                 }, void 0),
                                 title: "Inventory",
@@ -446,7 +473,7 @@ function AppPage() {
                                 color: "from-red-500 to-pink-500"
                             }, void 0, false, {
                                 fileName: "[project]/app/app/page.tsx",
-                                lineNumber: 128,
+                                lineNumber: 149,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(FeatureCard, {
@@ -454,7 +481,7 @@ function AppPage() {
                                     className: "w-8 h-8"
                                 }, void 0, false, {
                                     fileName: "[project]/app/app/page.tsx",
-                                    lineNumber: 135,
+                                    lineNumber: 156,
                                     columnNumber: 19
                                 }, void 0),
                                 title: "Profile",
@@ -462,13 +489,13 @@ function AppPage() {
                                 color: "from-indigo-500 to-purple-500"
                             }, void 0, false, {
                                 fileName: "[project]/app/app/page.tsx",
-                                lineNumber: 134,
+                                lineNumber: 155,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/app/page.tsx",
-                        lineNumber: 103,
+                        lineNumber: 124,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Card"], {
@@ -479,7 +506,7 @@ function AppPage() {
                                 children: "Your Stats"
                             }, void 0, false, {
                                 fileName: "[project]/app/app/page.tsx",
-                                lineNumber: 144,
+                                lineNumber: 165,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -490,7 +517,7 @@ function AppPage() {
                                         value: "0"
                                     }, void 0, false, {
                                         fileName: "[project]/app/app/page.tsx",
-                                        lineNumber: 146,
+                                        lineNumber: 167,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(StatItem, {
@@ -498,7 +525,7 @@ function AppPage() {
                                         value: "0 CHZ"
                                     }, void 0, false, {
                                         fileName: "[project]/app/app/page.tsx",
-                                        lineNumber: 147,
+                                        lineNumber: 168,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(StatItem, {
@@ -506,7 +533,7 @@ function AppPage() {
                                         value: "#—"
                                     }, void 0, false, {
                                         fileName: "[project]/app/app/page.tsx",
-                                        lineNumber: 148,
+                                        lineNumber: 169,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(StatItem, {
@@ -514,31 +541,31 @@ function AppPage() {
                                         value: "0"
                                     }, void 0, false, {
                                         fileName: "[project]/app/app/page.tsx",
-                                        lineNumber: 149,
+                                        lineNumber: 170,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/app/page.tsx",
-                                lineNumber: 145,
+                                lineNumber: 166,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/app/page.tsx",
-                        lineNumber: 143,
+                        lineNumber: 164,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/app/page.tsx",
-                lineNumber: 91,
+                lineNumber: 112,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/app/page.tsx",
-        lineNumber: 67,
+        lineNumber: 88,
         columnNumber: 5
     }, this);
 }
@@ -553,12 +580,12 @@ function FeatureCard({ icon, title, description, color }) {
                     children: icon
                 }, void 0, false, {
                     fileName: "[project]/app/app/page.tsx",
-                    lineNumber: 171,
+                    lineNumber: 192,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/app/page.tsx",
-                lineNumber: 170,
+                lineNumber: 191,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -566,7 +593,7 @@ function FeatureCard({ icon, title, description, color }) {
                 children: title
             }, void 0, false, {
                 fileName: "[project]/app/app/page.tsx",
-                lineNumber: 173,
+                lineNumber: 194,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -574,13 +601,13 @@ function FeatureCard({ icon, title, description, color }) {
                 children: description
             }, void 0, false, {
                 fileName: "[project]/app/app/page.tsx",
-                lineNumber: 174,
+                lineNumber: 195,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/app/page.tsx",
-        lineNumber: 169,
+        lineNumber: 190,
         columnNumber: 5
     }, this);
 }
@@ -593,7 +620,7 @@ function StatItem({ label, value }) {
                 children: value
             }, void 0, false, {
                 fileName: "[project]/app/app/page.tsx",
-                lineNumber: 182,
+                lineNumber: 203,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -601,13 +628,13 @@ function StatItem({ label, value }) {
                 children: label
             }, void 0, false, {
                 fileName: "[project]/app/app/page.tsx",
-                lineNumber: 183,
+                lineNumber: 204,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/app/page.tsx",
-        lineNumber: 181,
+        lineNumber: 202,
         columnNumber: 5
     }, this);
 }

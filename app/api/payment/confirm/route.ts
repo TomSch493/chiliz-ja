@@ -15,11 +15,17 @@ const RequestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔵 Payment confirmation request received')
+    
     // Require authentication
     const user = await requireAuth()
+    console.log('✅ User authenticated:', user.address)
 
     const body = await request.json()
+    console.log('📦 Request body:', body)
+    
     const { txHash } = RequestSchema.parse(body)
+    console.log('✅ txHash validated:', txHash)
 
     // Check if payment already exists
     const existingPayment = await prisma.payment.findUnique({
@@ -86,6 +92,14 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // ✅ IMPORTANT: Set user as logged in after successful payment
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { isLoggedIn: true },
+    })
+
+    console.log(`✅ User ${user.address} is now logged in after payment`)
+
     return NextResponse.json({
       success: true,
       status: 'CONFIRMED',
@@ -97,7 +111,10 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
+    console.error('❌ Payment confirmation error:', error)
+    
     if (error instanceof Error && error.message.includes('Unauthorized')) {
+      console.error('❌ Auth error:', error.message)
       return NextResponse.json(
         { error: 'Unauthorized - Please connect your wallet' },
         { status: 401 }
@@ -105,15 +122,16 @@ export async function POST(request: NextRequest) {
     }
 
     if (error instanceof z.ZodError) {
+      console.error('❌ Validation error:', error.errors)
       return NextResponse.json(
         { error: 'Invalid request data', details: error.errors },
         { status: 400 }
       )
     }
 
-    console.error('Error confirming payment:', error)
+    console.error('❌ Unexpected error confirming payment:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     )
   }

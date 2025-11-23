@@ -1,33 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import jwt from 'jsonwebtoken'
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+import { getCurrentUser } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    // Get JWT from cookie
-    const token = request.cookies.get('auth_token')?.value
+    // Get current user from session
+    const user = await getCurrentUser()
 
-    if (!token) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
       )
     }
 
-    // Verify JWT
-    let decoded: any
-    try {
-      decoded = jwt.verify(token, JWT_SECRET)
-    } catch (err) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      )
-    }
-
-    const userId = decoded.userId
+    const userId = user.id
 
     // Check if user has any confirmed payments
     const payment = await prisma.payment.findFirst({

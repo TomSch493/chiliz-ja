@@ -10,41 +10,57 @@ export default function AppPage() {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     checkAccess();
   }, []);
 
-  const checkAccess = async () => {
+  const checkAccess = async (attempt = 0) => {
     try {
+      console.log(`🔍 Checking access (attempt ${attempt + 1})...`);
+      
       // Check if user is authenticated
       const authResponse = await fetch("/api/auth/me");
       if (!authResponse.ok) {
-        router.push("/");
+        console.log("❌ Not authenticated, redirecting to onboarding");
+        // Small delay to avoid redirect loops
+        setTimeout(() => router.replace("/"), 500);
         return;
       }
 
       const authData = await authResponse.json();
+      console.log("✅ User authenticated:", authData);
       
       // Check if user has paid
       const paymentsResponse = await fetch("/api/payment/check");
       if (!paymentsResponse.ok) {
-        router.push("/");
+        console.log("❌ Payment check failed, redirecting to onboarding");
+        setTimeout(() => router.replace("/"), 500);
         return;
       }
 
       const paymentsData = await paymentsResponse.json();
+      console.log("💰 Payment status:", paymentsData);
       
       if (paymentsData.hasPaid) {
+        console.log("✅ User has paid, granting access");
         setHasAccess(true);
+        setIsChecking(false);
       } else {
-        router.push("/");
+        // If this is a fresh redirect from payment, wait and retry once
+        if (attempt === 0) {
+          console.log("⏳ Payment not confirmed yet, retrying in 2 seconds...");
+          setRetryCount(1);
+          setTimeout(() => checkAccess(1), 2000);
+        } else {
+          console.log("❌ Payment not confirmed after retry, redirecting to onboarding");
+          setTimeout(() => router.replace("/"), 500);
+        }
       }
     } catch (error) {
-      console.error("Access check error:", error);
-      router.push("/");
-    } finally {
-      setIsChecking(false);
+      console.error("❌ Access check error:", error);
+      setTimeout(() => router.replace("/"), 500);
     }
   };
 
@@ -54,6 +70,11 @@ export default function AppPage() {
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-300">Verifying access...</p>
+          {retryCount > 0 && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              Confirming payment... (attempt {retryCount + 1}/2)
+            </p>
+          )}
         </div>
       </div>
     );

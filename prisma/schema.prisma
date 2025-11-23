@@ -12,11 +12,12 @@ datasource db {
 
 // User model - stores wallet addresses
 model User {
-  id        String   @id @default(cuid())
-  address   String   @unique // Ethereum wallet address (lowercase)
-  nonce     String?  // Temporary nonce for authentication
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  address    String   @unique // Ethereum wallet address (lowercase)
+  nonce      String?  // Temporary nonce for authentication
+  isLoggedIn Boolean  @default(false) // Set to true after successful payment
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   sessions Session[]
   payments Payment[]

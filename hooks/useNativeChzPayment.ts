@@ -166,15 +166,35 @@ export function useNativeChzPayment(authenticatedAddress?: string | null) {
       }))
 
       // Confirm payment on backend
+      console.log('🔄 Confirming payment with backend...')
+      console.log('📤 Sending txHash:', txHash)
+      console.log('📤 Authenticated address:', userAddress)
+      
       const confirmResponse = await fetch('/api/payment/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // ✅ Ensure cookies are sent
         body: JSON.stringify({ txHash }),
       })
 
+      console.log('📡 Confirmation response status:', confirmResponse.status)
+      console.log('📡 Response headers:', Object.fromEntries(confirmResponse.headers.entries()))
+      
       if (!confirmResponse.ok) {
-        throw new Error('Payment confirmation failed')
+        let errorData;
+        try {
+          errorData = await confirmResponse.json();
+        } catch (e) {
+          errorData = { error: `HTTP ${confirmResponse.status}: ${confirmResponse.statusText}` };
+        }
+        console.error('❌ Backend confirmation failed:', errorData)
+        console.error('❌ Response status:', confirmResponse.status)
+        console.error('❌ Response statusText:', confirmResponse.statusText)
+        throw new Error(errorData.error || `Payment confirmation failed with status ${confirmResponse.status}`)
       }
+
+      const confirmData = await confirmResponse.json()
+      console.log('✅ Backend confirmation successful:', confirmData)
 
       // Success!
       setState(prev => ({

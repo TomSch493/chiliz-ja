@@ -14,6 +14,7 @@ export function OnboardingFlow() {
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
 
   const { 
     address, 
@@ -42,13 +43,38 @@ export function OnboardingFlow() {
   // Étape 2 → Étape 3 automatiquement après paiement réussi
   useEffect(() => {
     if (paymentStatus === "confirmed" && currentStep === 2) {
+      console.log("✅ Payment confirmed, moving to step 3");
+      console.log("🔍 Payment status:", paymentStatus);
+      console.log("🔍 Current step:", currentStep);
       setCurrentStep(3);
-      // Redirection après 2 secondes
-      setTimeout(() => {
-        router.push("/app");
-      }, 2000);
+      
+      // Start countdown
+      let countdown = 2;
+      setRedirectCountdown(countdown);
+      
+      const countdownInterval = setInterval(() => {
+        countdown--;
+        setRedirectCountdown(countdown);
+        
+        if (countdown <= 0) {
+          clearInterval(countdownInterval);
+          console.log("🚀 REDIRECTING NOW! Page will reload...");
+          console.log("✅ User is now logged in (isLoggedIn = true in database)");
+          
+          // Force hard reload - don't wait for anything else
+          window.location.href = "/";
+        }
+      }, 1000);
+      
+      // Cleanup - but don't prevent redirect if it already happened
+      return () => {
+        if (countdown > 0) {
+          console.log("⚠️ Cleanup called before redirect");
+          clearInterval(countdownInterval);
+        }
+      };
     }
-  }, [paymentStatus, currentStep, router]);
+  }, [paymentStatus, currentStep]);
 
   // Fetch balance when entering step 2
   useEffect(() => {
@@ -312,15 +338,23 @@ export function OnboardingFlow() {
               <CheckCircle2 className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-              Payment Successful!
+              🎉 Payment Successful!
             </h1>
-            <p className="text-gray-600 dark:text-gray-300 mb-8 text-lg">
-              Welcome to the app! Redirecting...
+            <p className="text-gray-600 dark:text-gray-300 mb-4 text-lg">
+              You're all set! Welcome aboard! 
+            </p>
+            <p className="text-sm text-green-600 dark:text-green-400 mb-8 font-medium">
+              ✅ You are now logged in
             </p>
 
-            <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Redirecting to app...</span>
+            <div className="flex flex-col items-center justify-center gap-3 text-green-600 dark:text-green-400">
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Loading dashboard...</span>
+              </div>
+              {redirectCountdown !== null && redirectCountdown > 0 && (
+                <div className="text-4xl font-bold animate-pulse">{redirectCountdown}</div>
+              )}
             </div>
           </div>
         )}
