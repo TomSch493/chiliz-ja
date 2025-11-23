@@ -81,6 +81,7 @@ export function useWalletAuth() {
       }
 
       const address = accounts[0]
+      console.log('🔐 Connected wallet address:', address)
 
       // Step 2: Request nonce from backend
       const nonceResponse = await fetch('/api/auth/nonce', {

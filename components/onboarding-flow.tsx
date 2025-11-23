@@ -30,7 +30,10 @@ export function OnboardingFlow() {
     isApproving,
     isPaying,
     paymentStatus,
-  } = useChzPayment();
+    balance,
+    isLoadingBalance,
+    fetchBalance,
+  } = useChzPayment(address); // Pass authenticated address to payment hook
 
   // Étape 1 → Étape 2 automatiquement après connexion
   useEffect(() => {
@@ -49,6 +52,13 @@ export function OnboardingFlow() {
       }, 2000);
     }
   }, [paymentStatus, currentStep, router]);
+
+  // Fetch balance when entering step 2
+  useEffect(() => {
+    if (currentStep === 2 && address && fetchBalance) {
+      fetchBalance();
+    }
+  }, [currentStep, address, fetchBalance]);
 
   const handleConnectWallet = async () => {
     try {
@@ -127,7 +137,7 @@ export function OnboardingFlow() {
               Welcome to Chiliz App
             </h1>
             <p className="text-gray-600 dark:text-gray-300 mb-8 text-lg">
-              Connect your wallet to get started
+              Connect your MetaMask wallet to get started
             </p>
 
             {!address ? (
@@ -144,7 +154,7 @@ export function OnboardingFlow() {
                 ) : (
                   <span className="flex items-center justify-center gap-2">
                     <Wallet className="w-5 h-5" />
-                    Connect Wallet
+                    Connect MetaMask
                   </span>
                 )}
               </button>
@@ -157,7 +167,18 @@ export function OnboardingFlow() {
             )}
 
             <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">
-              Make sure you're on Chiliz Chain (Chain ID: 88888)
+              Make sure MetaMask is on Chiliz Spicy Testnet (Chain ID: 88882)
+            </p>
+            <p className="mt-2 text-xs text-blue-500 dark:text-blue-400">
+              Need testnet CHZ? Get free tokens at{" "}
+              <a 
+                href="https://spicy-faucet.chiliz.com" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="underline hover:text-blue-600"
+              >
+                Chiliz Faucet
+              </a>
             </p>
           </div>
         )}
@@ -193,12 +214,72 @@ export function OnboardingFlow() {
             </div>
 
             {address && (
-              <div className="mb-6 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Wallet</p>
-                <p className="text-sm font-mono text-gray-900 dark:text-white">
-                  {address.slice(0, 10)}...{address.slice(-8)}
-                </p>
-              </div>
+              <>
+                <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Wallet</p>
+                  <p className="text-sm font-mono text-gray-900 dark:text-white">
+                    {address.slice(0, 10)}...{address.slice(-8)}
+                  </p>
+                </div>
+
+                {/* Balance Display */}
+                <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Your Balance</p>
+                      {isLoadingBalance ? (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Loading...</p>
+                        </div>
+                      ) : balance !== null ? (
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                          {balance} <span className="text-sm font-normal text-gray-500">CHZ</span>
+                        </p>
+                      ) : (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Unable to load</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Required</p>
+                      <p className="text-lg font-semibold text-green-600 dark:text-green-400">
+                        1.00 CHZ
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Warning if insufficient balance */}
+                  {balance !== null && parseFloat(balance) < 1 && (
+                    <div className="mt-3 pt-3 border-t border-purple-200 dark:border-purple-800">
+                      <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        Insufficient balance. You need at least 1 CHZ to proceed.
+                      </p>
+                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                        💡 Get test tokens from the{" "}
+                        <a 
+                          href="https://spicy-faucet.chiliz.com" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="underline hover:text-blue-700"
+                        >
+                          Chiliz Faucet
+                        </a>
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Success indicator if sufficient balance */}
+                  {balance !== null && parseFloat(balance) >= 1 && (
+                    <div className="mt-3 pt-3 border-t border-purple-200 dark:border-purple-800">
+                      <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Sufficient balance to proceed ✅
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
 
             <button

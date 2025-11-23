@@ -15,6 +15,8 @@ interface PaymentState {
   paymentStatus: 'idle' | 'approving' | 'paying' | 'confirming' | 'confirmed' | 'error'
   txHash: string | null
   error: string | null
+  balance: string | null
+  isLoadingBalance: boolean
 }
 
 const ERC20_ABI = [
@@ -32,7 +34,7 @@ const CHZ_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_CHZ_TOKEN_ADDRESS || '0x721ef6
 const PAYMENT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PAYMENT_CONTRACT_ADDRESS || '0x02278441aa8acf07E9c1aEa074d3A36E1Dd4F4FD'
 const FIXED_CHZ_AMOUNT = process.env.NEXT_PUBLIC_FIXED_CHZ_AMOUNT || '1000000000000000000' // 1 CHZ
 
-export function useChzPayment() {
+export function useChzPayment(authenticatedAddress?: string | null) {
   const [state, setState] = useState<PaymentState>({
     isProcessing: false,
     isApproving: false,
@@ -40,7 +42,70 @@ export function useChzPayment() {
     paymentStatus: 'idle',
     txHash: null,
     error: null,
+    balance: null,
+    isLoadingBalance: false,
   })
+
+  /**
+   * Verify that the current MetaMask account matches the authenticated address
+   */
+  const verifyWalletMatch = async (): Promise<string> => {
+    if (!window.ethereum) {
+      throw new Error('MetaMask is not installed')
+    }
+
+    const provider = new BrowserProvider(window.ethereum)
+    const signer = await provider.getSigner()
+    const currentAddress = await signer.getAddress()
+
+    console.log('🔐 Authenticated address:', authenticatedAddress)
+    console.log('💳 Current MetaMask address:', currentAddress)
+
+    // Verify addresses match (case-insensitive)
+    if (authenticatedAddress && currentAddress.toLowerCase() !== authenticatedAddress.toLowerCase()) {
+      throw new Error(
+        `Wallet mismatch! You authenticated with ${authenticatedAddress} but MetaMask is currently using ${currentAddress}. Please switch to the correct account in MetaMask.`
+      )
+    }
+
+    return currentAddress
+  }
+
+  /**
+   * Fetch user's CHZ token balance
+   */
+  const fetchBalance = async () => {
+    if (!window.ethereum || !authenticatedAddress) {
+      return
+    }
+
+    setState(prev => ({ ...prev, isLoadingBalance: true }))
+
+    try {
+      const provider = new BrowserProvider(window.ethereum)
+      const chzToken = new Contract(CHZ_TOKEN_ADDRESS, ERC20_ABI, provider)
+      const balance = await chzToken.balanceOf(authenticatedAddress)
+      
+      // Format balance to human-readable format (2 decimal places)
+      const balanceInChz = Number(balance) / 1e18
+      const formattedBalance = balanceInChz.toFixed(2)
+      
+      setState(prev => ({
+        ...prev,
+        balance: formattedBalance,
+        isLoadingBalance: false,
+      }))
+
+      console.log('💰 Fetched balance:', formattedBalance, 'CHZ')
+    } catch (error: any) {
+      console.error('Failed to fetch balance:', error)
+      setState(prev => ({
+        ...prev,
+        balance: null,
+        isLoadingBalance: false,
+      }))
+    }
+  }
 
   /**
    * Check current allowance
@@ -51,10 +116,9 @@ export function useChzPayment() {
     }
 
     try {
-      const provider = new BrowserProvider(window.ethereum)
-      const signer = await provider.getSigner()
-      const userAddress = await signer.getAddress()
+      const userAddress = await verifyWalletMatch()
 
+      const provider = new BrowserProvider(window.ethereum)
       const chzToken = new Contract(CHZ_TOKEN_ADDRESS, ERC20_ABI, provider)
       const allowance = await chzToken.allowance(userAddress, PAYMENT_CONTRACT_ADDRESS)
       
@@ -82,12 +146,19 @@ export function useChzPayment() {
     }))
 
     try {
+      // Verify wallet match first
+      const userAddress = await verifyWalletMatch()
+      
+      console.log('🔐 Approving tokens for address:', userAddress)
+      
       const provider = new BrowserProvider(window.ethereum)
       const signer = await provider.getSigner()
       const chzToken = new Contract(CHZ_TOKEN_ADDRESS, ERC20_ABI, signer)
 
       const approveTx = await chzToken.approve(PAYMENT_CONTRACT_ADDRESS, FIXED_CHZ_AMOUNT)
+      console.log('⏳ Approval transaction sent:', approveTx.hash)
       await approveTx.wait()
+      console.log('✅ Approval confirmed')
 
       setState(prev => ({
         ...prev,
@@ -97,7 +168,7 @@ export function useChzPayment() {
 
       return { success: true }
     } catch (error: any) {
-      console.error('Approval error:', error)
+      console.error('❌ Approval error:', error)
       const errorMessage = error.message || 'Token approval failed'
       
       setState(prev => ({
@@ -129,12 +200,29 @@ export function useChzPayment() {
     }))
 
     try {
+      // Verify wallet match first
+      const userAddress = await verifyWalletMatch()
+      
+      console.log('💳 Executing payment for address:', userAddress)
+      
       const provider = new BrowserProvider(window.ethereum)
       const signer = await provider.getSigner()
+      
+      // Check balance before paying
+      const chzToken = new Contract(CHZ_TOKEN_ADDRESS, ERC20_ABI, provider)
+      const balance = await chzToken.balanceOf(userAddress)
+      console.log('💰 CHZ Token balance:', balance.toString(), '(' + (Number(balance) / 1e18) + ' CHZ)')
+      
+      if (BigInt(balance.toString()) < BigInt(FIXED_CHZ_AMOUNT)) {
+        throw new Error(`Insufficient CHZ balance. You have ${Number(balance) / 1e18} CHZ but need ${Number(FIXED_CHZ_AMOUNT) / 1e18} CHZ`)
+      }
+      
       const paymentContract = new Contract(PAYMENT_CONTRACT_ADDRESS, PAYMENT_CONTRACT_ABI, signer)
 
       // Execute payment
+      console.log('⏳ Sending payment transaction...')
       const payTx = await paymentContract.pay()
+      console.log('📝 Payment transaction sent:', payTx.hash)
       
       setState(prev => ({
         ...prev,
@@ -144,6 +232,7 @@ export function useChzPayment() {
       // Wait for transaction to be mined
       const receipt = await payTx.wait()
       const txHash = receipt.hash
+      console.log('✅ Payment confirmed! TX:', txHash)
 
       setState(prev => ({
         ...prev,
@@ -162,14 +251,15 @@ export function useChzPayment() {
       }
 
       // Success!
-      setState({
+      setState(prev => ({
+        ...prev,
         isProcessing: false,
         isApproving: false,
         isPaying: false,
         paymentStatus: 'confirmed',
         txHash,
         error: null,
-      })
+      }))
 
       return { success: true, txHash }
     } catch (error: any) {
@@ -199,6 +289,8 @@ export function useChzPayment() {
       paymentStatus: 'idle',
       txHash: null,
       error: null,
+      balance: null,
+      isLoadingBalance: false,
     })
   }
 
@@ -208,5 +300,6 @@ export function useChzPayment() {
     pay,
     checkAllowance,
     resetPayment,
+    fetchBalance,
   }
 }
