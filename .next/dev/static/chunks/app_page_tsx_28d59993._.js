@@ -9,7 +9,7 @@
   "static/chunks/a7082_ethers_lib_esm_wallet_9db3bede._.js",
   "static/chunks/a7082_ethers_lib_esm_d9e40fef._.js",
   "static/chunks/86fe9_@noble_curves_esm_13b9c42a._.js",
-  "static/chunks/node_modules__pnpm_a2d7b25b._.js"
+  "static/chunks/node_modules__pnpm_e7c03875._.js"
 ],
     source: "dynamic"
 });

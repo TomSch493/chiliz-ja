@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Sword, Trophy, User } from "lucide-react";
+import { Loader2, Sword, Trophy, User, LogOut } from "lucide-react";
 import { OnboardingFlow } from "@/components/onboarding-flow";
 import LeaderboardPage from "@/components/leaderboard-page";
 import InventoryPage from "@/components/inventory-page";
@@ -12,6 +12,7 @@ export default function HomePage() {
   const [isChecking, setIsChecking] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activePage, setActivePage] = useState("leaderboard");
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     checkLoginStatus();
@@ -42,6 +43,32 @@ export default function HomePage() {
       console.error("❌ Error checking login status:", error);
       setIsLoggedIn(false);
       setIsChecking(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      console.log("🔓 Logging out...");
+
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        console.log("✅ Logged out successfully");
+        // Reload page to show login screen
+        window.location.href = "/";
+      } else {
+        console.error("❌ Logout failed");
+        // Still reload to be safe
+        window.location.href = "/";
+      }
+    } catch (error) {
+      console.error("❌ Logout error:", error);
+      // Force reload anyway
+      window.location.href = "/";
     }
   };
 
@@ -82,6 +109,28 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col">
       {/* Mobile App Container */}
       <div className="flex-1 max-w-md mx-auto w-full bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 shadow-lg overflow-hidden flex flex-col">
+        {/* Header with Logout Button */}
+        <div className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-sm border-b border-slate-800">
+          <div className="flex justify-between items-center px-4 py-3">
+            <div>
+              <h1 className="text-lg font-bold text-white">FidelyCheck</h1>
+              <p className="text-xs text-slate-400">Web3 Loyalty Platform</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoggingOut ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <LogOut className="w-4 h-4" />
+              )}
+              <span className="text-sm font-medium">Logout</span>
+            </button>
+          </div>
+        </div>
+
         {/* Main Content */}
         <div className="flex-1 overflow-y-auto pb-20">{renderPage()}</div>
 
